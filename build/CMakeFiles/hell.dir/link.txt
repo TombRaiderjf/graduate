@@ -1,0 +1,1 @@
+/usr/bin/c++      CMakeFiles/hell.dir/src/hello.cpp.o  -o hell 
