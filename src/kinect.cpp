@@ -88,7 +88,9 @@ void Kinect_camera::close(){
 bool Kinect_camera::frame_stream(bool s){
 	flag = 3;
 	Frame undistorted(512, 424, 4), registered(512, 424, 4), bigdepth(1920, 1082, 4);
-	while(!kbhit()){
+	int pre_count = 0;
+	
+	while(/*!kbhit()*/pre_count<100){
 	
 		clock_t m1=clock();
 		FrameMap frames;
@@ -106,7 +108,7 @@ bool Kinect_camera::frame_stream(bool s){
 		//registration->apply(rgb, depth, &undistorted, &registered, true, &bigdepth, 0);
 		registration->apply(rgb, depth, &undistorted, &registered);
 		
-		
+
         if(rgb && depth)
         {
         
@@ -150,11 +152,15 @@ bool Kinect_camera::frame_stream(bool s){
             //std::cout<<"compute sfm feature time:"<<double(c5-c4)/CLOCKS_PER_SEC<<endl;
 
             count++;
+            
+
 		}
 		
 		listener->release(frames);
 		clock_t m2=clock();
 		std::cout<<"Single Frame time:"<<double(m2-m1)/CLOCKS_PER_SEC<<endl;
+		pre_count++;
+        getchar();
 	}
 }
 

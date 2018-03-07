@@ -75,7 +75,6 @@ int main()
 	return 0;
 
 }
-
 */
 int main()
 {				  
@@ -90,12 +89,16 @@ int main()
 	Load(sfm_data, "imgsave_out/reconstruction/robust.bin", ESfM_Data(ALL));
 	Views::const_iterator iter = sfm_data.GetViews().begin();
 	vector<Vec3> coordinate;
-	
-	Mat3 rot;
-	rot<<0.997248,-0.0638613,-0.037456,0.0618396,0.996699,-0.0526039,0.0408809,0.0501313,0.997905;
-	Vec3 trans(-0.0591987,-0.043131,0.0136954);
+	iter++;
+	iter++;
+	iter++;
+
+	//Mat3 rot;
+	//rot<<0.997248,-0.0638613,-0.037456,0.0618396,0.996699,-0.0526039,0.0408809,0.0501313,0.997905;
+	//Vec3 trans(-0.0591987,-0.043131,0.0136954);
 
 	int dp=0;
+	
 	
 	/*
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in (new pcl::PointCloud<pcl::PointXYZ>); //创建输入点云（指针）
@@ -112,7 +115,7 @@ int main()
   	cloud_out->points.resize (cloud_in->width * cloud_in->height); //变形，无序
 	*/
 	
-	for(int i=0;i<2;i++,iter++)
+	for(int i=3;i<5;i++,iter++)
 	{
 		cout<<"---------------\n";
 		if(i==135)
@@ -127,10 +130,10 @@ int main()
   		Mat3 rotation = pose.rotation().transpose();
   		Vec3 center = pose.center();
   		cout<<"rotation: \n"<<rotation<<endl;
- 
+ 		Vec3 center1(center[1],center[0],0);
 
   		cout<<"center: "<<center[0]<<" "<<center[1]<<" "<<center[2]<<endl;
-  		if(i==0)
+  		//if(i==0)
 		for(int j = 0;j<img_float.cols; j++)
 		{
 			for(int k = 0;k<img_float.rows; k++)
@@ -155,9 +158,10 @@ int main()
     				cloud_in->points[count].z =z;
     				*/
     				
-    				Vec3 vec1(x,y,z);
-    				Vec3 vec2 = rot*vec1;
-    				//cout<<vec2<<endl;
+    				Vec3 vec1(y,x,z);
+    				Vec3 vec2 = rotation*vec1;
+    				//Vec3 vec1(x,y,z);
+    				//Vec3 vec2 = vec1;
     				coordinate.push_back(vec2);
     				count++;
     				//system("pause");
@@ -165,43 +169,7 @@ int main()
   				}
 			}
 		}
-		
-		else
-		for(int j = 0;j<img_float.cols; j++)
-		{
-			for(int k = 0;k<img_float.rows; k++)
-			{
-  				float depth_val = img_float.at<float>(j,k)/1000.0f; //scaling factor, so that value of 1 is one meter.
-  				if (isnan(depth_val) || depth_val <= 0.001)
-  				{
-    			//depth value is not valid
-    				continue;
-  				}
- 				else
-  				{
 
-  					
-    				x = (j + 0.5 - cx) * fx * depth_val;
-    				y = (k + 0.5 - cy) * fy * depth_val;
-    				z = depth_val;
-    				
-    				/*
-    				cloud_out->points[count-dp].x =x;
-    				cloud_out->points[count-dp].y =y;
-    				cloud_out->points[count-dp].z =z;
-    				*/
-    				
-    				Vec3 vec1(x,y,z);
-    				Vec3 vec2 = vec1;
-    				//cout<<vec2<<endl;
-    				coordinate.push_back(vec2);
-    				count++;
-    				//system("pause");
-    				//getchar();
-  				}
-			}
-		}
-		
 		
 		if(dp==0)
 			dp=count;
@@ -234,10 +202,13 @@ int main()
 	}
 	rgb[1]=0;
 	rgb[2]=255;
+	
 	for(int i=dp;i<count;i++)
 	{
 		fout<<coordinate[i][0]<<" "<<coordinate[i][1]<<" "<<coordinate[i][2]<<" "<<rgb[0]<<" "<<rgb[1]<<" "<<rgb[2]<<endl;
 	}
+	
+	
 	/*
 	for(int i = 0;i<count;i++)
 	{
@@ -257,4 +228,5 @@ int main()
 	
 	return 0;
 }
+
 
