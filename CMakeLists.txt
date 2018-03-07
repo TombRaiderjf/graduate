@@ -22,6 +22,7 @@ find_package(OpenCV 3 REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(CGAL REQUIRED)
 FIND_PACKAGE( OpenMP)
+find_package(PCL REQUIRED)
   if(OPENMP_FOUND)
      message("-- OPENMP FOUND")
      set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
@@ -29,7 +30,6 @@ FIND_PACKAGE( OpenMP)
      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
   endif()
 include_directories(SYSTEM ${OpenMP_INCLUDE_PATH})
-
 
 #3.head file path，头文件目录
 INCLUDE_DIRECTORIES(
@@ -39,6 +39,7 @@ include
 /usr/local/include/openMVG_dependencies/cereal/include
 /usr/local/include/openMVG_dependencies
 /usr/local/include/eigen3
+/usr/local/include/pcl-1.8
 ${OpenCV_INCLUDE_DIRS}
 )
 
@@ -67,6 +68,7 @@ TARGET_LINK_LIBRARIES(myexe
   ${CGAL_LIBRARIES} 
   ${CGAL_3RD_PARTY_LIBRARIES} 
   ${OpenMP_LIBRARIES}
+  ${PCL_LIBRARIES}
   cxsparse
   openMVG_system
   openMVG_image

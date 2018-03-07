@@ -103,33 +103,35 @@ bool Kinect_camera::frame_stream(bool s){
     	Frame *depth = frames[libfreenect2::Frame::Depth];
     	
     	
-		registration->apply(rgb, depth, &undistorted, &registered, true, &bigdepth, 0);
+		//registration->apply(rgb, depth, &undistorted, &registered, true, &bigdepth, 0);
+		registration->apply(rgb, depth, &undistorted, &registered);
 		
 		
         if(rgb && depth)
         {
         
-            //cv::Mat depthMat((int)undistorted.height, (int)undistorted.width, CV_32FC1, undistorted.data);
+            cv::Mat depthMat((int)undistorted.height, (int)undistorted.width, CV_32FC1, undistorted.data);
             cv::Mat rgbMat((int)rgb->height, (int)rgb->width, CV_8UC4, rgb->data);
 			
             //cv::Mat regMat((int)registered.height, (int)registered.width, CV_8UC4, registered.data);
-            cv::Mat bigdepthMat((int)bigdepth.height, (int)bigdepth.width, CV_32FC1, bigdepth.data);
+            //cv::Mat bigdepthMat((int)bigdepth.height, (int)bigdepth.width, CV_32FC1, bigdepth.data);
             
             
             char ImageName[20];
             sprintf(ImageName, "%s%s%d%s", img_path, "/img", count, ".jpg");
             imwrite(ImageName, rgbMat);   
-            
+            //imwrite(ImageName, regMat); 
             
             write_sfm_data();
             
-            cv::Mat bigdepthMat_8u(bigdepthMat.rows, bigdepthMat.cols, CV_8UC4, bigdepthMat.data);     
-            //clock_t c3 = clock();  
+            //cv::Mat bigdepthMat_8u(bigdepthMat.rows, bigdepthMat.cols, CV_8UC4, bigdepthMat.data);     
+            cv::Mat depthMat_8u(depthMat.rows, depthMat.cols, CV_8UC4, depthMat.data);    
                     
             char ImageName_reg[20];
             sprintf(ImageName_reg, "%s%s%d%s", img_path, "/img", count, ".bmp");  
-            imwrite(ImageName_reg, bigdepthMat_8u);
-            //clock_t c4 = clock();
+            //imwrite(ImageName_reg, bigdepthMat_8u);
+            imwrite(ImageName_reg, depthMat_8u);
+            
             
 
 			
