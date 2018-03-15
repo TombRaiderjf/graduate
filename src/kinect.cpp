@@ -90,7 +90,7 @@ bool Kinect_camera::frame_stream(bool s){
 	Frame undistorted(512, 424, 4), registered(512, 424, 4), bigdepth(1920, 1082, 4);
 	int pre_count = 0;
 	
-	while(/*!kbhit()*/pre_count<100){
+	while(/*!kbhit()*/pre_count<5){
 	
 		clock_t m1=clock();
 		FrameMap frames;

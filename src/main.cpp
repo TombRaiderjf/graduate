@@ -24,6 +24,19 @@
 #include <pcl/io/pcd_io.h> //pcd文件输入/输出
 #include <pcl/point_types.h> //各种点类型
 #include <pcl/registration/icp.h> //ICP(iterative closest point)配准
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/filters/voxel_grid.h>
+
+
+
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Point_set_3.h>
+#include <CGAL/property_map.h>
+#include <CGAL/compute_average_spacing.h>
+#include <CGAL/remove_outliers.h>
+#include <CGAL/Simple_cartesian.h>
+#include <CGAL/wlop_simplify_and_regularize_point_set.h>
+#include <CGAL/Point_set_3/IO.h>
 
 
 using namespace std;
@@ -33,6 +46,22 @@ using namespace openMVG;
 using namespace openMVG::cameras;
 using namespace openMVG::image;
 using namespace openMVG::sfm;
+
+
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
+typedef Kernel::FT FT;
+typedef Kernel::Point_3 Point;
+typedef Kernel::Vector_3 Vector;
+typedef CGAL::Point_set_3<Point> Point_set;
+
+
+#ifdef CGAL_LINKED_WITH_TBB
+typedef CGAL::Parallel_tag Concurrency_tag;
+#else
+typedef CGAL::Sequential_tag Concurrency_tag;
+#endif
+
 
 //using namespace openMVG::geodesy;
 
@@ -75,6 +104,7 @@ int main()
 	return 0;
 
 }
+
 */
 int main()
 {				  
@@ -89,9 +119,8 @@ int main()
 	Load(sfm_data, "imgsave_out/reconstruction/robust.bin", ESfM_Data(ALL));
 	Views::const_iterator iter = sfm_data.GetViews().begin();
 	vector<Vec3> coordinate;
-	iter++;
-	iter++;
-	iter++;
+
+
 
 	//Mat3 rot;
 	//rot<<0.997248,-0.0638613,-0.037456,0.0618396,0.996699,-0.0526039,0.0408809,0.0501313,0.997905;
@@ -100,7 +129,7 @@ int main()
 	int dp=0;
 	
 	
-	/*
+	
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in (new pcl::PointCloud<pcl::PointXYZ>); //创建输入点云（指针）
   	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out (new pcl::PointCloud<pcl::PointXYZ>); //创建输出/目标点云（指针）
   	
@@ -113,16 +142,13 @@ int main()
   	cloud_out->height = 424;
   	cloud_out->is_dense = false;
   	cloud_out->points.resize (cloud_in->width * cloud_in->height); //变形，无序
-	*/
 	
-	for(int i=3;i<5;i++,iter++)
+	
+	std::vector<Point> points;
+	
+	for(int i=0;i<2;i++,iter++)
 	{
 		cout<<"---------------\n";
-		if(i==135)
-		{
-			iter--;
-			continue;
-		}
 		cv::Mat img = cv::imread(img_path_s+"/img"+to_string(i)+".bmp",-1);
 		cv::Mat img_float(img.rows, img.cols, CV_32FC1, img.data);
   		View * view = iter->second.get();
@@ -130,10 +156,54 @@ int main()
   		Mat3 rotation = pose.rotation().transpose();
   		Vec3 center = pose.center();
   		cout<<"rotation: \n"<<rotation<<endl;
- 		Vec3 center1(center[1],center[0],0);
+ 		//Vec3 center1(center[1],center[0],0);
 
   		cout<<"center: "<<center[0]<<" "<<center[1]<<" "<<center[2]<<endl;
-  		//if(i==0)
+  		if(i==0)
+		for(int j = 0;j<img_float.cols; j++)
+		{
+			for(int k = 0;k<img_float.rows; k++)
+			{
+  				float depth_val = img_float.at<float>(j,k)/1000.0f; //scaling factor, so that value of 1 is one meter.
+  				if (isnan(depth_val) || depth_val <= 0.001)
+  				{
+    			//depth value is not valid
+    				continue;
+  				}
+ 				else
+  				{
+
+  					
+    				x = (j + 0.5 - cx) * fx * depth_val;
+    				y = (k + 0.5 - cy) * fy * depth_val;
+    				z = depth_val;
+    				
+    				
+    				//cloud_in->points[count].x =x;
+    				//cloud_in->points[count].y =y;
+    				//cloud_in->points[count].z =z;
+    				
+    				int index = j*512+k;
+    				cloud_in->points[index].x =x;
+    				cloud_in->points[index].y =y;
+    				cloud_in->points[index].z =z;
+    				
+    				
+    				Vec3 vec1(y,x,z);
+    				Vec3 vec2 = rotation*vec1+center;
+    				
+    				
+    				//Vec3 vec1(x,y,z);
+    				//Vec3 vec2 = vec1;
+    				coordinate.push_back(vec2);
+    				count++;
+    				
+    				points.push_back (Point (x, y, z));
+
+  				}
+			}
+		}
+		else
 		for(int j = 0;j<img_float.cols; j++)
 		{
 			for(int k = 0;k<img_float.rows; k++)
@@ -153,19 +223,19 @@ int main()
     				z = depth_val;
     				
     				/*
-    				cloud_in->points[count].x =x;
-    				cloud_in->points[count].y =y;
-    				cloud_in->points[count].z =z;
-    				*/
+    				cloud_out->points[count-dp].x =x;
+    				cloud_out->points[count-dp].y =y;
+    				cloud_out->points[count-dp].z =z;
+    				
     				
     				Vec3 vec1(y,x,z);
-    				Vec3 vec2 = rotation*vec1;
+    				Vec3 vec2 = rotation*vec1+center;
     				//Vec3 vec1(x,y,z);
     				//Vec3 vec2 = vec1;
     				coordinate.push_back(vec2);
     				count++;
-    				//system("pause");
-    				//getchar();
+    				*/
+
   				}
 			}
 		}
@@ -190,8 +260,82 @@ int main()
   	std::cout << icp.getFinalTransformation() << std::endl;
   	*/
   	
+  	
+  	
+  // Removes outliers using erase-remove idiom.
+  // The Identity_property_map property map can be omitted here as it is the default value.
+  	const int nb_neighbors = 24; // considers 24 nearest neighbor points
+  // Estimate scale of the point set with average spacing
+ 	const double average_spacing = CGAL::compute_average_spacing<CGAL::Sequential_tag>
+    (points.begin(), points.end(), nb_neighbors);
+    cout<<"average spacing:"<<average_spacing<<endl;
+  // FIRST OPTION //
+  // I don't know the ratio of outliers present in the point set
+  	std::vector<Point>::iterator first_to_remove
+    = CGAL::remove_outliers(points.begin(), points.end(),
+                            CGAL::Identity_property_map<Point>(),
+                            nb_neighbors,
+                            100.,                  // No limit on the number of outliers to remove
+                            2. * average_spacing); // Point with distance above 2*average_spacing are considered outliers
+  	std::cerr << (100. * std::distance(first_to_remove, points.end()) / (double)(points.size()))
+            << "% of the points are considered outliers when using a distance threshold of "
+            << 2. * average_spacing << std::endl;
+  	points.erase(first_to_remove, points.end());
+  	std::vector<Point>(points).swap(points);
+  	cout<<points.size()<<endl;
+  	
+  	//WLOP
+  	std::vector<Point> output;
+  	const double retain_percentage = 20;   // percentage of points to retain.
+  	const double neighbor_radius = 0.05;   // neighbors size.
+  	CGAL::wlop_simplify_and_regularize_point_set
+                          <Concurrency_tag>
+                          (points.begin(), 
+                           points.end(),
+                           std::back_inserter(output),
+                           retain_percentage,
+                           average_spacing*5
+                           );
+  	cout<<output.size()<<endl;
+	std::ofstream out ("out.ply");
+	/*
+  	out<<"ply\nformat ascii 1.0\n";
+  	out<<"element vertex "<<output.size()<<std::endl;
+	out<<"property float x\nproperty float y\nproperty float z\nend_header\n";
+	int output_size=output.size();
+	for(int i=0;i<output_size;i++)
+		out<<output[i].x<<" "<<output[i].y<<" "<<output[i].z<<endl;
+	out.close();
+	*/
 	
-	fout<<"element vertex "<<count<<std::endl;
+	CGAL::write_ply_points(out, output.begin(), output.end());
+  	
+  	/*
+  	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_re (new pcl::PointCloud<pcl::PointXYZ>); 		  		
+  	pcl::VoxelGrid<pcl::PointXYZ> sor;
+  	sor.setInputCloud (cloud_in);
+  	sor.setLeafSize (0.01f, 0.01f, 0.01f);
+  	sor.filter (*cloud_re);
+  		
+  	ofstream fout2("model2.ply");
+  	fout2<<"ply\nformat ascii 1.0\n";
+  	fout2<<"element vertex "<<cloud_re->size()<<std::endl;
+	fout2<<"property float x\nproperty float y\nproperty float z\nend_header\n";
+	int after = cloud_re->size();
+	for(int i = 0;i<after;i++)
+		fout2<<cloud_re->points[i].x<<" "<<cloud_re->points[i].y<<" "<<cloud_re->points[i].z<<endl;
+		
+	fout2.close();
+  	*/
+  	
+  	
+  	ofstream fout1("model1.ply");
+  	fout1<<"ply\nformat ascii 1.0\n";
+  	fout1<<"element vertex "<<count-dp<<std::endl;
+	fout1<<"property float x\nproperty float y\nproperty float z\nproperty uchar diffuse_red\nproperty uchar diffuse_green\nproperty uchar diffuse_blue\nend_header\n";
+  	
+	
+	fout<<"element vertex "<<dp<<std::endl;
 	fout<<"property float x\nproperty float y\nproperty float z\nproperty uchar diffuse_red\nproperty uchar diffuse_green\nproperty uchar diffuse_blue\nend_header\n";
 	//fout<<"property float x\nproperty float y\nproperty float z\nend_header\n";
 	
@@ -205,7 +349,7 @@ int main()
 	
 	for(int i=dp;i<count;i++)
 	{
-		fout<<coordinate[i][0]<<" "<<coordinate[i][1]<<" "<<coordinate[i][2]<<" "<<rgb[0]<<" "<<rgb[1]<<" "<<rgb[2]<<endl;
+		fout1<<coordinate[i][0]<<" "<<coordinate[i][1]<<" "<<coordinate[i][2]<<" "<<rgb[0]<<" "<<rgb[1]<<" "<<rgb[2]<<endl;
 	}
 	
 	
@@ -215,6 +359,8 @@ int main()
 		fout<<coordinate[i][0]<<" "<<coordinate[i][1]<<" "<<coordinate[i][2]<<endl;
 	}
 	*/
+	
+	fout1.close();
 	fout.close();
 	/*
 	for(int i = 0; i<10;i++)
