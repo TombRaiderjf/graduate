@@ -69,6 +69,7 @@ TARGET_LINK_LIBRARIES(myexe
   ${CGAL_3RD_PARTY_LIBRARIES} 
   ${OpenMP_LIBRARIES}
   ${PCL_LIBRARIES}
+  tbb
   cxsparse
   openMVG_system
   openMVG_image

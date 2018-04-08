@@ -67,6 +67,7 @@ public:
 	bool compute_sfm_feature(char* ImageName,/* Eigen::Matrix<unsigned char, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& eMatrix*/ cv::Mat& rgbMat);
 	bool compute_sfm_matches();
 	void image_describer_out();
+	void projection(cv::Mat& color, cv::Mat& depth);
 };
 
 template<class K, class V>
