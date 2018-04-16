@@ -49,7 +49,8 @@ public:
 	Freenect2Device* device;
 	Registration* registration;
 	SyncMultiFrameListener* listener;
-	
+	//vector<Frame> rgb_array;
+	//vector<Frame> depth_array;
 	SfM_Data sfm_data;
 	//Views & views = sfm_data.views;
   	//Intrinsics & intrinsics = sfm_data.intrinsics;

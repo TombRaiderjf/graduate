@@ -195,7 +195,7 @@ bool Kinect_camera::frame_stream(bool s){
         
         	
 	
-	while(/*!kbhit()*/pre_count<20){
+	while(/*!kbhit()*/pre_count<5){
 	
 		clock_t m1=clock();
 		FrameMap frames;
@@ -213,6 +213,8 @@ bool Kinect_camera::frame_stream(bool s){
 		//registration->apply(rgb, depth, &undistorted, &registered, true, &bigdepth, 0);
 		registration->apply(rgb, depth, &undistorted, &registered);
 		
+		//depth_array.push_back(undistorted);
+		//rgb_array.push_back(*rgb);
 
         if(rgb && depth)
         {
