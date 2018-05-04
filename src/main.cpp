@@ -57,6 +57,15 @@
 #include <openMVG/third_party/stlplus3/filesystemSimplified/file_system.hpp>
 #include <openMVG/third_party/vectorGraphics/svgDrawer.hpp>
 
+
+#include <boost/config.hpp>
+#include <boost/graph/graph_traits.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/property_map/property_map.hpp>
+
+
+
 using namespace std;
 using namespace libfreenect2;
 using namespace Eigen;
@@ -289,7 +298,7 @@ Vec3 compute_transform(SfM_Data & sfm_data, int a, int b, Kinect_camera& cam, fl
   				}
 			}
 		}
-		if(count_a<5000)
+		if(count_a<4000)
 			return Vec3(0,0,0);
 	
 		cloud_a->points.resize(count_a);
@@ -320,12 +329,12 @@ Vec3 compute_transform(SfM_Data & sfm_data, int a, int b, Kinect_camera& cam, fl
   				}
 			}
 		}
-		if(count_b<5000)
+		if(count_b<4000)
 			return Vec3(0,0,0);
 		cloud_b->points.resize(count_b);
 		cout<<"count a : "<<count_a<<"\ncount b: "<<count_b<<endl;
 		//赋值原始点云
-	if((count_a*1.3< count_b) || (count_b*1.3<count_a))
+	if((count_a*1.4< count_b) || (count_b*1.4<count_a))
 		return Vec3(0,0,0);
 	float center_dx = center_b[0]-center_a[0];
 	float center_dz = center_b[2]-center_a[2];
@@ -345,11 +354,11 @@ Vec3 compute_transform(SfM_Data & sfm_data, int a, int b, Kinect_camera& cam, fl
 	else
  		icp.setMaxCorrespondenceDistance(distance*0.33);  
 	icp.setTransformationEpsilon(1e-10); 
-	icp.setEuclideanFitnessEpsilon(0.001); 
-	icp.setMaximumIterations(100);   
+	icp.setEuclideanFitnessEpsilon(0.0001); 
+	icp.setMaximumIterations(200);   
 	icp.align(Final);
 	std::cout << "has converged:" << icp.hasConverged() << " score: " <<icp.getFitnessScore() << std::endl; //输出最终的变换矩阵（4x4）
-	if(icp.getFitnessScore()>0.002)
+	if(icp.getFitnessScore()>0.05)
 		return Vec3(0,0,0);
 	weight =icp.getFitnessScore(); 
 	Eigen::Matrix4f matrix = icp.getFinalTransformation();
@@ -411,7 +420,7 @@ cam.close();
 		  
 	const float cx=257.524, cy=208.875;
   	const float fx= 1/365.147, fy = 1/365.147;
-	const Vec3 T(0.0542155,0,0);
+	//const Vec3 T(0.0542155,0,0);
 
 	int count=0;
 	float x,y,z;
@@ -461,9 +470,11 @@ cam.close();
 	for(int i = 0; i<image_count;i++)
 		trans[i] = new Vec3[image_count];
 
-
 	trans[0][0]=Vec3(0,0,0);
-	/*
+
+	
+/*
+	
 	cv::Mat image = cv::Mat::zeros(1080, 400, CV_8UC3);  
 	image.setTo(cv::Scalar(0, 0, 0));  
 	for(int i = 0;i<image_count;i++)
@@ -514,23 +525,187 @@ cam.close();
 	
 	
 	cout<<"End computing--------------\n";
-	*/
 	
+*/	
 	
+/*
+	time_t start, finish;  
+    time(&start); 
+		
+	ofstream trans_out("trans.txt");
 	for(int i = 0; i<image_count;i++)
 	{
 		for(int j = (i+1);j<image_count;j++)
 		{
 			float weight = -1;
 			trans[i][j] = compute_transform(sfm_data,i,j,cam, weight);
+			trans_out<<i<<" "<<j<<" "<<trans[i][j]<<endl;
 			pmvs_mat(i,j) = weight;
 		}
 	}
-	
+	trans_out.close();
+	time(&finish);
+	double duration = difftime(finish, start);  
+	cout << "--> time: " << duration << " s" << endl;  
+	ofstream pmvs_write("out.txt");
+	pmvs_write<<pmvs_mat;
+	pmvs_write.close();
 	cout<<"Done! weight computed!\n"<<pmvs_mat<<endl;
+*/
+
 	
+	ifstream trans_in("trans.txt");
+	Eigen::MatrixXd m=Eigen::MatrixXd::Identity(image_count, image_count);
 	
-/*	
+	Vec3** n = new Vec3*[image_count];
+	for(int i = 0; i<image_count;i++)
+		n[i] = new Vec3[image_count];
+
+	for(int k = 0 ;k<(image_count*(image_count-1)/2); k++)
+	{
+		int i,j;
+		float x0,y0,z0;
+		Vec3 b;
+		trans_in>>i>>j>>x0>>y0>>z0;
+		n[i][j] = Vec3(x0,y0,z0);
+	}
+	trans_in.close();
+	
+	ifstream pmvs_read("out.txt");
+	for(int i = 0;i<image_count;i++)
+		for(int j= 0 ;j<image_count; j++)
+		{
+			pmvs_read>>m(i,j);
+			//cout<<m(i,j)<<" ";
+		}
+	cout<<m<<endl;
+	Eigen::MatrixXd m_copy=m;
+	
+	for(int k= 0; k<(image_count*(image_count-1)/2); k++)
+	{
+		int max_i = 0,max_j = 0;
+		float max_value = 100;
+		for(int i= 0; i<image_count; i++)
+			for(int j = (i+1); j<image_count; j++)
+			{
+				if(m(i,j)<max_value && m(i,j)!=0)
+				{
+					max_i = i;
+					max_j = j;
+					max_value = m(i,j);
+				}
+			}
+		if(max_value!=100)
+			m(max_i,max_j) = 1000+k;
+		else
+			break;
+	}
+	cout<<"-----------\n"<<m<<endl;
+
+Eigen::MatrixXd sequence=Eigen::MatrixXd::Zero(image_count, image_count);
+
+	for(int i = 0; i<image_count; i++)
+	{
+		for(int j = (i+1); j<image_count;j++)
+		{
+			if(i!=j && m(i,j)>=1000 && m(i,j)<1045)
+			{
+				sequence(i,j) = 1;
+				sequence(j,i) = 1;
+			}
+		}
+	}
+  	
+  	cout<<sequence<<endl;
+  	
+  	
+  	
+  using namespace boost;
+  typedef adjacency_list <listS, vecS, undirectedS,no_property, property <edge_weight_t, double>> graph_t;
+  typedef graph_traits <graph_t>::vertex_descriptor vertex_descriptor;
+  typedef std::pair<int, int> Edge;
+
+
+	Edge edge_array[60];
+	double weights[60];
+	int edge_count = 0;
+	for(int i=0; i<image_count; i++)
+	{
+		for(int j = (i+1);j<image_count; j++)
+		{
+			if(m(i,j)>=1000 && m(i,j)<1060)
+			{
+				cout<<m_copy(i,j)<<endl;
+				edge_array[edge_count] = Edge(i,j);
+				weights[edge_count] = m_copy(i,j);
+				//float weight = -1;
+				//trans[i][j] = compute_transform(sfm_data,i,j,cam, weight);
+				edge_count++;
+			}
+		}
+	}
+
+  int num_arcs =60;
+  graph_t g(edge_array, edge_array + num_arcs, weights, image_count);
+  property_map<graph_t, edge_weight_t>::type weightmap = get(edge_weight, g);
+  std::vector<vertex_descriptor> p(num_vertices(g));
+  std::vector<int> d(num_vertices(g));
+  vertex_descriptor s1 = vertex(0, g);  //起始点为0
+
+  dijkstra_shortest_paths(g, s1,
+                          predecessor_map(boost::make_iterator_property_map(p.begin(), get(boost::vertex_index, g))).
+                          distance_map(boost::make_iterator_property_map(d.begin(), get(boost::vertex_index, g))));
+    vector<Vec3> tozero(20);
+    tozero[0] = Vec3(0,0,0);
+	for(int i = 1; i<image_count;i++)
+	{              
+		vector<int> path;//从终止点到起始点的路径   
+		int t = i;
+		for(;t!=0; t=p[t])
+			path.push_back(t);
+		path.push_back(0);
+    	//reverse(path.begin(), path.end());//反转路线 从起始点到出发点
+    //输出路径
+    cout<<i<<"------\n";
+    Vec3 vtemp(0,0,0);
+    int j = 0;
+    double tweight = 0;
+    	for (;j<(path.size()-1);j++)
+   	 	{
+        	std::cout << path[j] << "->";
+        	
+        	if(path[j]>path[j+1])
+        	{
+        		vtemp = vtemp + n[path[j+1]][path[j]];
+        		tweight += m_copy(path[j+1],path[j]);
+        	}
+        	else{
+        		vtemp = vtemp - n[path[j]][path[j+1]];
+        		tweight += m_copy(path[j],path[j+1]);
+        	}
+    	}
+		cout<<path[j]<<endl;
+        tozero[i]=vtemp;
+        cout<<tweight<<endl;
+        //cout<<vtemp<<endl;
+	}
+
+  	
+/*
+  	Eigen::MatrixXd plus=Eigen::MatrixXd::Zero(image_count, image_count);
+  	Eigen::MatrixXd tp_plus = sequence;
+  	for(int i = 1; i<image_count;i++)
+  	{
+  		plus += tp_plus;
+  		tp_plus = tp_plus*sequence;
+  	}
+  	cout<<"--------------\n";
+  	cout<<plus<<endl;
+  
+*/
+  
+  	
+
 	
 {	
 		cv::Mat img = cv::imread(img_path_s+"/img0.bmp",-1);
@@ -577,10 +752,7 @@ cam.close();
 	for(int i = 1; i<image_count ;i++, iter++)
 	{
 		cout<<i<<endl;
-		float weight=-1;
-		Vec3 tran=compute_transform(sfm_data,0,i,cam, weight);
-		if(!weight)
-			continue;
+
 		cv::Mat img = cv::imread(img_path_s+"/img"+to_string(i)+".bmp",-1);
 		cv::Mat img_float(img.rows, img.cols, CV_32FC1, img.data);
   		View * view = iter->second.get();
@@ -612,7 +784,7 @@ cam.close();
     				y = (k + 0.5 - cy) * fy * depth_val;
     				z = depth_val;  				
     				Vec3 vec1(y,x,z);
-    				Vec3 vec2 = rotation*(vec1)+center+tran;   				
+    				Vec3 vec2 = rotation*(vec1)+center+tozero[i];   				
      				cloud->points[count].x =vec2[0];
     				cloud->points[count].y =vec2[1];
     				cloud->points[count].z =vec2[2];
@@ -625,7 +797,7 @@ cam.close();
 		}
 		
 	}
-*/
+
 
 
 /*
